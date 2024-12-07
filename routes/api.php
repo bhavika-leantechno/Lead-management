@@ -4,6 +4,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\ForgotPasswordController;
+use App\Http\Controllers\OtpVerificationController;
+use App\Http\Controllers\ResetPasswordController;
 
 
 /*
@@ -29,6 +32,10 @@ Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanc
 Route::middleware('auth:sanctum')->post('/change-password', [UserController::class, 'changePassword']);
 
 Route::post('signup', [AuthController::class, 'signup']);
+
+Route::post('/forgot-password', [ForgotPasswordController::class, 'sendOtp']);
+Route::post('/verify-otp', [OtpVerificationController::class, 'verifyOtp']);
+Route::post('/reset-password', [ResetPasswordController::class, 'resetPassword']);
 
 
 
