@@ -9,6 +9,8 @@ use App\Http\Controllers\OtpVerificationController;
 use App\Http\Controllers\ResetPasswordController;
 use App\Http\Controllers\Api\LeadController;
 use App\Http\Controllers\Api\AdminController;
+use App\Http\Controllers\PlanController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -98,6 +100,25 @@ Route::middleware('auth:api')->prefix('admin/agents')->group(function () {
     // Delete agent by ID
     Route::delete('/{id}', [AdminController::class, 'deleteAgent']);
 });
+
+
+Route::middleware('auth:api')->prefix('admin/plans')->group(function () {
+    // Create a new plans
+    Route::post('/create', [AdminController::class, 'createPlans']);
+
+    // List all plans
+    Route::get('/', [AdminController::class, 'getPlans']);
+
+    // View plans details by ID
+    Route::get('/{id}', [AdminController::class, 'viewPlans']);
+
+    // Edit plans details by ID
+    Route::put('/{id}', [AdminController::class, 'editPlans']);
+
+    // Delete plans by ID
+    Route::delete('/{id}', [AdminController::class, 'deletePlans']);
+});
+
 
 
 
