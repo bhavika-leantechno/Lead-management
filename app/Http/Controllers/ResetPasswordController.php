@@ -16,51 +16,63 @@ class ResetPasswordController extends Controller
             // Validate the inputs
             $validator = Validator::make($request->all(), [
                 'email' => 'required|email|exists:users,email',
-                'password' => 'required|string|min:8|confirmed',
+                'password' => 'required|string|min:8|confirmed',  // This checks if 'password' matches 'password_confirmation'
                 'otp' => 'required|string|size:6',
+            ], [
+                'email.exists' => 'The provided email does not exist in our records.',
+                'email.email' => 'The provided email address is invalid.',
             ]);
+            
+            // Check if validation failed
+            if ($validator->fails()) {
+                return response()->json([
+                    'message' => 'Validation failed.',
+                    'errors' => $validator->errors(),
+                ], 400);
+            }
+    
             $email = $request->input('email');
             $password = $request->input('password');
             $otp = $request->input('otp');
-
+    
             // Log the inputs for debugging
             Log::info('Reset Password Request', [
                 'email' => $email,
                 'otp' => $otp,
             ]);
-
+    
             // Verify OTP
             $resetData = DB::table('password_resets')->where('email', $email)->first();
-
+    
             if (!$resetData) {
                 Log::error('OTP verification failed: No reset data found for email', ['email' => $email]);
                 return response()->json([
                     'message' => 'Invalid or expired OTP.',
                 ], 400);
             }
-
+    
             if ($resetData->otp !== $otp || $resetData->expiry_time < now()) {
                 Log::error('OTP verification failed: OTP mismatch or expired', ['email' => $email, 'otp' => $otp]);
                 return response()->json([
                     'message' => 'Invalid or expired OTP.',
                 ], 400);
             }
-
+    
             // Update the user's password
             $userUpdated = User::where('email', $email)->update([
                 'password' => Hash::make($password), // Hash the new password
             ]);
-
+    
             if (!$userUpdated) {
                 Log::error('Password update failed', ['email' => $email]);
                 return response()->json([
                     'message' => 'Failed to update password.',
                 ], 500);
             }
-
+    
             // Delete the OTP record after password reset
             DB::table('password_resets')->where('email', $email)->delete();
-
+    
             // Return success response
             return response()->json([
                 'message' => 'Password reset successfully.',
@@ -68,7 +80,7 @@ class ResetPasswordController extends Controller
         } catch (Exception $e) {
             // Log the error for debugging
             Log::error('Password reset failed', ['error' => $e->getMessage()]);
-
+    
             // Return a generic error response
             return response()->json([
                 'message' => 'An error occurred while resetting the password. Please try again later.',

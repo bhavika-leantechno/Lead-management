@@ -5,16 +5,17 @@ use Illuminate\Support\Facades\Hash;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
 
 class OtpVerificationController extends Controller
 {
     public function verifyOtp(Request $request)
     {
       
-        // Validate the input OTP
-        $request->validate([
-            'email' => 'required|email|exists:users,email', // Ensure the email exists in the database
-            'otp' => 'required|string|size:6', // OTP should be exactly 6 characters
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email|exists:users,email',
+            'otp' => 'required|string|size:6',
         ]);
 
         $email = $request->input('email');

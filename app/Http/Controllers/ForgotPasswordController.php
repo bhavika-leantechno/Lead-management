@@ -9,6 +9,8 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
 
 class ForgotPasswordController extends Controller
 {
@@ -16,11 +18,16 @@ class ForgotPasswordController extends Controller
     {
         try {
             // Validate the email
-            $request->validate([
-                'email' => 'required|email|exists:users,email',
-            ], [
-                'email.exists' => 'The provided email does not exist in our records.',
-            ]);
+            // $request->validate([
+            //     'email' => 'required|email|exists:users,email',
+            // ], [
+            //     'email.exists' => 'The provided email does not exist in our records.',
+            // ]);
+
+            
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email|exists:users,email',
+        ]);
 
             // Get the email input
             $email = $request->input('email');

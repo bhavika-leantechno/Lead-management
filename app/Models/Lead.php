@@ -30,6 +30,7 @@ class Lead extends Model
         'deleted_by',
         'user_id',
         'status',
+        'level'
     ];
 
     // The attributes that should be hidden for arrays (e.g., passwords, tokens)

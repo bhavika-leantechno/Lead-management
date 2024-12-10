@@ -13,37 +13,56 @@ class LeadController extends Controller
 
     public function levelOne(Request $request)
     {
-        // Validate input fields for Level 1
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'number' => 'required|string|max:20',
-            'company_name' => 'required|string|max:255',
-            'email' => 'required|email|max:255',
-            'location' => 'nullable|string',
-        ]);
-
-        // Generate a unique processing ID
-        $processingId = Str::random(8);
-
-        // Create new lead at level 1 and store in database
-        $lead = Lead::create([
-            'name' => $validated['name'],
-            'number' => $validated['number'],
-            'company_name' => $validated['company_name'],
-            'email' => $validated['email'],
-            'location' => $validated['location'],
-            'processing_id' => $processingId,
-            'level' => '1', // Mark as Level 1
-        ]);
-
-        // Return response with lead data and next step
-        return response()->json([
-            'message' => 'Step 1 data saved, proceed to Level 2.',
-            'lead_id' => $lead->id,
-            'processing_id' => $processingId,
-            'step' => 2
-        ]);
+        try {
+            // Validate input fields for Level 1
+            $validated = $request->validate([
+                'name' => 'required|string|max:255',
+                'number' => 'required|string|max:20',
+                'company_name' => 'required|string|max:255',
+                'email' => 'required|email|max:255|unique:leads,email', // Ensure the email is unique
+                'location' => 'nullable|string',
+            ]);
+    
+            // Generate a unique processing ID
+            do {
+                $processingId = Str::random(8);
+            } while (Lead::where('processing_id', $processingId)->exists()); // Check if processing ID already exists
+    
+            // Create new lead at level 1 and store in database
+            $lead = Lead::create([
+                'name' => $validated['name'],
+                'number' => $validated['number'],
+                'company_name' => $validated['company_name'],
+                'email' => $validated['email'],
+                'location' => $validated['location'],
+                'processing_id' => $processingId,
+                'level' => '1', // Mark as Level 1
+            ]);
+    
+            // Return response with lead data and next step
+            return response()->json([
+                'message' => 'Step 1 data saved, proceed to Level 2.',
+                'lead_id' => $lead->id,
+                'processing_id' => $processingId,
+                'step' => 2
+            ]);
+    
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Handle validation errors
+            return response()->json([
+                'message' => 'Validation failed.',
+                'errors' => $e->errors(),
+            ], 422); // Unprocessable Entity status
+        } catch (\Exception $e) {
+            // Catch any other unexpected errors
+            return response()->json([
+                'message' => 'An error occurred during the lead creation process.',
+                'error' => $e->getMessage(),
+            ], 500); // Internal Server Error status
+        }
     }
+    
+
 
     /**
      * Handle Level 2: Additional Details.
@@ -70,49 +89,57 @@ class LeadController extends Controller
         ]);
     }
 
+   
     /**
      * Handle Level 3: File Upload and Finalization.
      */
     public function levelThree(Request $request)
     {
-        // Validate file upload for Level 3
-        $validated = $request->validate([
-            'cr_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
-            'cc_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
-            'tl_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
-        ]);
+        try {
+            // Validate input for Level 3
+            $validated = $request->validate([
+                'lead_id' => 'required|exists:leads,id',
+                'cr_file' => 'nullable|string|max:255', // Accept file path as a string
+                'cc_file' => 'nullable|string|max:255', // Accept file path as a string
+                'tl_file' => 'nullable|string|max:255', // Accept file path as a string
+            ]);
 
-        // Find the lead and update Level 3 data with file uploads
-        $lead = Lead::findOrFail($request->lead_id);
+            // Find the lead and update Level 3 data
+            $lead = Lead::findOrFail($validated['lead_id']);
 
-        // Handle file uploads
-        if ($request->hasFile('cr_file')) {
-            $crFilePath = $request->file('cr_file')->store('leads/cr', 'public');
-            $lead->cr_file = $crFilePath;
+            // Update the lead with provided file paths and set the level to 3
+            $lead->update([
+                'cr_file' => $validated['cr_file'] ?? $lead->cr_file,
+                'cc_file' => $validated['cc_file'] ?? $lead->cc_file,
+                'tl_file' => $validated['tl_file'] ?? $lead->tl_file,
+                'level' => '3', // Mark as Level 3 (final step)
+            ]);
+
+            // Return success response
+            return response()->json([
+                'message' => 'Lead successfully updated to Level 3.',
+                'lead_id' => $lead->id
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Handle validation errors
+            return response()->json([
+                'message' => 'Validation failed.',
+                'errors' => $e->errors(),
+            ], 422); // Unprocessable Entity
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Handle case where lead is not found
+            return response()->json([
+                'message' => 'Lead not found.',
+            ], 404); // Not Found
+        } catch (\Exception $e) {
+            // Handle any other unexpected errors
+            return response()->json([
+                'message' => 'An error occurred during Level 3 processing.',
+                'error' => $e->getMessage(),
+            ], 500); // Internal Server Error
         }
-
-        if ($request->hasFile('cc_file')) {
-            $ccFilePath = $request->file('cc_file')->store('leads/cc', 'public');
-            $lead->cc_file = $ccFilePath;
-        }
-
-        if ($request->hasFile('tl_file')) {
-            $tlFilePath = $request->file('tl_file')->store('leads/tl', 'public');
-            $lead->tl_file = $tlFilePath;
-        }
-
-        // Update the lead status and set to final step (Level 3)
-        $lead->update([
-            'file_path' => $lead->cr_file ?? $lead->cc_file ?? $lead->tl_file,
-            'level' => '3', // Mark as Level 3 (final step)
-        ]);
-
-        // Return success response
-        return response()->json([
-            'message' => 'Lead successfully created.',
-            'lead_id' => $lead->id
-        ]);
     }
+
 
     /**
      * Get all leads (Admin access).
@@ -122,11 +149,16 @@ class LeadController extends Controller
         // Get all leads
         $leads = Lead::all();
 
+        // Get total count of leads
+        $totalCount = $leads->count();
+
         return response()->json([
             'message' => 'Leads fetched successfully.',
+            'total_count' => $totalCount,
             'data' => $leads
         ]);
     }
+
 
     /**
      * Get leads by level (e.g., Level 1, Level 2, or Level 3).
