@@ -7,9 +7,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
-use Illuminate\Database\Eloquent\SoftDeletes;  // For soft delete functionality
+use Tymon\JWTAuth\Contracts\JWTSubject;
 
-class User extends Authenticatable
+
+
+class User extends Authenticatable implements JWTSubject
 {
     use HasApiTokens, HasFactory, Notifiable;
 
@@ -28,6 +30,12 @@ class User extends Authenticatable
         'expiredate',
         'status',
         'is_deleted',
+        'approve_status',
+        'user_type',
+        'profile_picture',
+        'assigned_report',
+        'approve_freelancer',
+        'assigned_agent'
     ];
     protected $dates = [
         'expiredate',
@@ -51,6 +59,26 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
     ];
+
+    /**
+    * Get the identifier that will be stored in the subject claim of the JWT.
+    *
+    * @return mixed
+    */
+    public function getJWTIdentifier()
+    {
+        return $this->getKey(); // Typically, the primary key of the user
+    }
+    
+    /**
+     * Return a key-value array containing any custom claims to be added to the JWT.
+     *
+     * @return array
+     */
+    public function getJWTCustomClaims()
+    {
+        return []; // You can add custom claims here
+    }
 
      /**
      * User is a one-to-many relationship with Lead.

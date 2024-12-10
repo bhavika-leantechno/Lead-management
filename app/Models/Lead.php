@@ -16,7 +16,7 @@ class Lead extends Model
     // The attributes that are mass assignable
     protected $fillable = [
         'name',
-        'number',
+        'lead_type',
         'company_name',
         'email',
         'location',
@@ -30,7 +30,11 @@ class Lead extends Model
         'deleted_by',
         'user_id',
         'status',
-        'level'
+        'level',
+        'service_type',
+        'lead_type',
+        'phone_number',
+        'agent_id'
     ];
 
     // The attributes that should be hidden for arrays (e.g., passwords, tokens)

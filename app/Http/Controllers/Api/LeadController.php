@@ -7,10 +7,74 @@ use App\Models\Lead;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Validator;
 
 class LeadController extends Controller
 {
 
+    
+      /**
+     * Handle lead creation.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function createLead(Request $request)
+    {
+        // Validate incoming data
+        $validator = Validator::make($request->all(), [
+            'lead_type' => 'required|string|max:255', // e.g., "Mobile services", "Outsourcing"
+            'service_type' => 'nullable|string|max:255', // Default validation
+            'name' => 'required|string|max:255', // Full name
+            'company_name' => 'nullable|string|max:255',
+            'email' => 'required|email|max:255|unique:leads,email', // Unique email
+            'phone_number' => 'required|string|max:20',
+            'address' => 'nullable|string|max:500',
+            'service_text' => 'nullable|string|max:1000', // Description
+        ]);
+    
+        // Add conditional rule for service_type
+        $validator->sometimes('service_type', 'required|string|max:255', function ($input) {
+            return $input->lead_type === 'Mobile services';
+        });
+    
+        // If validation fails
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+    
+        try {
+            // Get the logged-in user's ID (created_by)
+            $createdBy = $request->user()->id;
+    
+            // Create the lead
+            $lead = Lead::create([
+                'lead_type' => $request->lead_type,
+                'service_type' => $request->service_type,
+                'name' => $request->name,
+                'company_name' => $request->company_name,
+                'email' => $request->email,
+                'phone_number' => $request->phone_number,
+                'address' => $request->address,
+                'service_text' => $request->service_text,
+                'created_by' => $createdBy,  // Store the ID of the logged-in user
+            ]);
+    
+            // Return success response
+            return response()->json([
+                'message' => 'Lead created successfully.',
+                'lead' => $lead,
+            ], 201);
+    
+        } catch (\Exception $e) {
+            // Handle errors
+            return response()->json([
+                'message' => 'An error occurred while creating the lead.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+    
     public function levelOne(Request $request)
     {
         try {
@@ -38,7 +102,8 @@ class LeadController extends Controller
                 'processing_id' => $processingId,
                 'level' => '1', // Mark as Level 1
             ]);
-    
+            ob_clean();
+            flush();
             // Return response with lead data and next step
             return response()->json([
                 'message' => 'Step 1 data saved, proceed to Level 2.',
@@ -146,31 +211,73 @@ class LeadController extends Controller
      */
     public function getLeads(Request $request)
     {
-        // Get all leads
-        $leads = Lead::all();
-
-        // Get total count of leads
-        $totalCount = $leads->count();
-
-        return response()->json([
-            'message' => 'Leads fetched successfully.',
-            'total_count' => $totalCount,
-            'data' => $leads
-        ]);
+        try {
+            // Retrieve the logged-in user's ID
+            $userId = $request->user()->id;
+            $userType = $request->user()->user_type;
+    
+            // Check if the user is a freelancer
+            if ($userType === 'freelancer') {
+                // Fetch only leads created by the logged-in freelancer
+                $leads = Lead::where('created_by', $userId)->get();
+            } else {
+                // For non-freelancers (admin, agent, etc.), fetch all leads
+                $leads = Lead::all();
+            }
+    
+            // Get total count of leads
+            $totalCount = $leads->count();
+    
+            return response()->json([
+                'message' => 'Leads fetched successfully.',
+                'total_count' => $totalCount,
+                'data' => $leads
+            ]);
+        } catch (\Exception $e) {
+            // Handle any errors
+            return response()->json([
+                'message' => 'An error occurred while fetching leads.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
-
+    
 
     /**
      * Get leads by level (e.g., Level 1, Level 2, or Level 3).
      */
-    public function getLeadsByLevel(Request $request, $level)
+    public function getLeadsByLevel(Request $request)
     {
-        // Fetch leads based on the level
-        $leads = Lead::where('level', $level)->get();
+        try {
+            // Validate that leadtype is provided in the request body
+            $request->validate([
+                'leadtype' => 'required|string|in:Mobile services,Outsourcing', // Validate the leadtype
+            ]);
 
-        return response()->json([
-            'message' => "Leads for Level $level fetched successfully.",
-            'data' => $leads
-        ]);
+            // Retrieve the leadtype from the request body
+            $leadtype = $request->input('leadtype'); // or $request->leadtype
+
+            // Fetch leads based on the leadtype
+            $leads = Lead::where('lead_type', $leadtype)->get();
+
+            // Return response with leads data
+            return response()->json([
+                'message' => "Leads for $leadtype fetched successfully.",
+                'data' => $leads
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Handle validation exception
+            return response()->json([
+                'message' => 'Validation failed.',
+                'errors' => $e->errors(),
+            ], 422); // Unprocessable Entity
+        } catch (\Exception $e) {
+            // Catch any other exception
+            return response()->json([
+                'message' => 'An error occurred while fetching the leads.',
+                'error' => $e->getMessage(),
+            ], 500); // Internal Server Error
+        }
     }
+    
 }

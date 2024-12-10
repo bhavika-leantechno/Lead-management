@@ -8,6 +8,7 @@ use App\Http\Controllers\ForgotPasswordController;
 use App\Http\Controllers\OtpVerificationController;
 use App\Http\Controllers\ResetPasswordController;
 use App\Http\Controllers\Api\LeadController;
+use App\Http\Controllers\Api\AdminController;
 
 /*
 |--------------------------------------------------------------------------
@@ -29,7 +30,7 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 Route::post('/register', [UserController::class, 'create']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
-Route::middleware('auth:sanctum')->post('/change-password', [UserController::class, 'changePassword']);
+Route::middleware('auth:api')->post('/change-password', [UserController::class, 'changePassword']);
 Route::post('/signup', [AuthController::class, 'signup']);
 
 // Password Recovery Routes
@@ -38,11 +39,11 @@ Route::post('/verify-otp', [OtpVerificationController::class, 'verifyOtp']);
 Route::post('/reset-password', [ResetPasswordController::class, 'resetPassword']);
 
 // Lead Management API Routes
-Route::middleware('api')->group(function () {
-Route::prefix('leads')->group(function () {
+// Lead Management API Routes
+Route::middleware('auth:api')->prefix('leads')->group(function () {
     // Step 1: Lead info (Level 1)
     Route::post('/level-1', [LeadController::class, 'levelOne']);
-     
+
     // Step 2: Additional details (Level 2)
     Route::post('/level-2', [LeadController::class, 'levelTwo']);
 
@@ -53,6 +54,51 @@ Route::prefix('leads')->group(function () {
     Route::get('/', [LeadController::class, 'getLeads']);
 
     // Get leads by level
-    Route::get('/level/{level}', [LeadController::class, 'getLeadsByLevel']);
+    Route::post('/level', [LeadController::class, 'getLeadsByLevel']);
+
+    // Create a new lead
+    Route::post('/create', [LeadController::class, 'createLead']);
 });
+
+// Freelancer Management API Routes
+Route::middleware('auth:api')->prefix('admin')->group(function () {
+    // Get all freelancers
+    Route::get('/freelancers', [AdminController::class, 'getFreelancers']);
+
+    // Approve a freelancer
+    Route::put('/freelancers-approve', [AdminController::class, 'getFreelancersApprove']);
+
+    // Get mobile services leads
+    Route::get('/leads/mobile-services', [AdminController::class, 'getMobileServicesLeads']);
+
+    // Get outsourcing leads
+    Route::get('/leads/outsourcing', [AdminController::class, 'getOutsourcingLeads']);
+
+    // Get lead details by ID
+    Route::get('/leads/{id}', [AdminController::class, 'getLeadDetails']);
+
+    // Update lead status
+    Route::put('/leads/{id}/update-status', [AdminController::class, 'updateLeadStatus']);
 });
+
+// Agent Management API Routes
+Route::middleware('auth:api')->prefix('admin/agents')->group(function () {
+    // Create a new agent
+    Route::post('/create', [AdminController::class, 'createAgent']);
+
+    // List all agents
+    Route::get('/', [AdminController::class, 'getAgents']);
+
+    // View agent details by ID
+    Route::get('/{id}', [AdminController::class, 'viewAgent']);
+
+    // Edit agent details by ID
+    Route::put('/{id}', [AdminController::class, 'editAgent']);
+
+    // Delete agent by ID
+    Route::delete('/{id}', [AdminController::class, 'deleteAgent']);
+});
+
+
+
+

@@ -9,6 +9,8 @@ use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Carbon\Carbon;
+use Tymon\JWTAuth\Facades\JWTAuth;
+
 
 class AuthController extends Controller
 {
@@ -23,25 +25,40 @@ class AuthController extends Controller
     
             // Retrieve the user by email
             $user = User::where('email', $request->email)->first();
+            
             if (!$user) {
                 return response()->json([
                     'message' => 'User not found.',
                 ], 404); // Not Found status
             }
-            // Check if user exists and password is correct
+    
+            // Check if the password is correct
             if (!Hash::check($request->password, $user->password)) {
                 return response()->json([
                     'message' => 'Password is incorrect.',
                 ], 401); // Unauthorized status
             }
     
-            // Generate the token
-            $token = $user->createToken('auth_token')->plainTextToken;
+            // Check user_type and approve_status
+            if ($user->user_type === 'freelancer' && $user->approve_status === 0) {
+                return response()->json([
+                    'message' => 'Your profile is not approved yet. Please contact support.',
+                ], 403); // Forbidden status
+            }
     
-            // Return the token
+            // Generate the JWT token
+            $token = JWTAuth::fromUser($user);
+    
+            // Return the token along with user information
             return response()->json([
                 'access_token' => $token,
                 'token_type' => 'Bearer',
+                'user' => [
+                    'id' => $user->id,
+                    'email' => $user->email,
+                    'name' => $user->name,
+                    'user_type' => $user->user_type,
+                ],
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
@@ -116,6 +133,8 @@ class AuthController extends Controller
             'password' => Hash::make($request->password),  // Hash the password
             'expiredate' => $request->expirydate ? Carbon::parse($request->expirydate) : null,
             'status' => 'active',  // Default status is active
+            'user_type' => 'freelancer',
+            'profile_picture' => $request->profile_picture,
             'is_deleted' => false,  // Default deletion status
         ]);
 
