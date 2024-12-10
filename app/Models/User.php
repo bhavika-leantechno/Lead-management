@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Database\Eloquent\SoftDeletes;  // For soft delete functionality
 
 class User extends Authenticatable
 {
@@ -50,4 +51,29 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
     ];
+
+     /**
+     * User is a one-to-many relationship with Lead.
+     * A user can have many leads.
+     */
+    public function leads()
+    {
+        return $this->hasMany(Lead::class);
+    }
+     /**
+     * User has a one-to-many relationship with created leads (for tracking created_by).
+     */
+    public function createdLeads()
+    {
+        return $this->hasMany(Lead::class, 'created_by');
+    }
+
+    /**
+     * User has a one-to-many relationship with updated leads (for tracking updated_by).
+     */
+    public function updatedLeads()
+    {
+        return $this->hasMany(Lead::class, 'updated_by');
+    }
+
 }
