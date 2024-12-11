@@ -14,43 +14,52 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 
 class AuthController extends Controller
 {
-    public function login(Request $request)
-    {
-        try {
-            // Validate the request
-            $request->validate([
-                'email' => 'required|email',
-                'password' => 'required',
-            ]);
-    
-            // Retrieve the user by email
-            $user = User::where('email', $request->email)->first();
-            
-            if (!$user) {
-                return response()->json([
-                    'message' => 'User not found.',
-                ], 404); // Not Found status
-            }
-    
-            // Check if the password is correct
-            if (!Hash::check($request->password, $user->password)) {
-                return response()->json([
-                    'message' => 'Password is incorrect.',
-                ], 401); // Unauthorized status
-            }
-    
-            // Check user_type and approve_status
-            if ($user->user_type === 'freelancer' && $user->approve_status === 0) {
-                return response()->json([
-                    'message' => 'Your profile is not approved yet. Please contact support.',
-                ], 403); // Forbidden status
-            }
-    
-            // Generate the JWT token
-            $token = JWTAuth::fromUser($user);
-    
-            // Return the token along with user information
+   public function login(Request $request)
+{
+    try {
+        // Validate the request
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required',
+        ]);
+
+        // Retrieve the user by email
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user) {
             return response()->json([
+                'status' => false,
+                'message' => 'User not found.',
+                'data' => null,
+            ], 200); // Not Found status
+        }
+
+        // Check if the password is correct
+        if (!Hash::check($request->password, $user->password)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Password is incorrect.',
+                'data' => null,
+            ], 200); // Unauthorized status
+        }
+
+        // Check user_type and approve_status
+        if ($user->user_type === 'freelancer' && $user->approve_status === 0) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Your profile is not approved yet. Please contact support.',
+                'data' => null,
+            ], 200); // Forbidden status
+        }
+
+        // Generate the JWT token
+        $token = JWTAuth::fromUser($user);
+
+        // Return the token along with user information
+        return response()->json([
+            'status' => true,
+            'message' => 'Login successful.',
+            'data' => [
                 'access_token' => $token,
                 'token_type' => 'Bearer',
                 'user' => [
@@ -59,46 +68,54 @@ class AuthController extends Controller
                     'name' => $user->name,
                     'user_type' => $user->user_type,
                 ],
-            ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'message' => 'Validation failed.',
-                'errors' => $e->errors(),
-            ], 422); // Unprocessable Entity status
-        } catch (\Exception $e) {
-            // Catch any other unexpected errors
-            return response()->json([
-                'message' => 'An error occurred during login.',
-                'error' => $e->getMessage(),
-            ], 500); // Internal Server Error status
-        }
+            ],
+        ]);
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        return response()->json([
+            'status' => false,
+            'message' => 'Validation failed.',
+            'data' => $e->errors(),
+        ], 200); // Unprocessable Entity status
+    } catch (\Exception $e) {
+        // Catch any other unexpected errors
+        return response()->json([
+            'status' => false,
+            'message' => 'An error occurred during login.',
+            'data' => $e->getMessage(),
+        ], 500); // Internal Server Error status
     }
-    
+}
 
 
-    public function logout(Request $request)
-    {
-        try {
-            // Revoke the user's token
-            $request->user()->tokens->each(function ($token) {
-                $token->delete();
-            });
-    
-            // Return success response
-            return response()->json([
-                'message' => 'Successfully logged out.'
-            ]);
-        } catch (\Exception $e) {
-            // Return error response if something goes wrong
-            return response()->json([
-                'message' => 'An error occurred during logout.',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
+
+   public function logout(Request $request)
+{
+    try {
+        // Revoke the user's current token
+        $request->user()->tokens->each(function ($token) {
+            $token->delete();
+        });
+
+        // Optionally, invalidate the cookie (if you're using Sanctum)
+        $cookie = cookie('XSRF-TOKEN', '', -1);
+        $cookie = cookie('laravel_session', '', -1);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Successfully logged out.',
+            'data' => null
+        ])->withCookies([$cookie]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => false,
+            'message' => 'An error occurred during logout.',
+            'data' => $e->getMessage(),
+        ], 500);
     }
-    
-    
-    
+}
+
+
+
 
     public function signup(Request $request)
     {
@@ -117,11 +134,15 @@ class AuthController extends Controller
 
         // Return errors if validation fails
         if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 400);
+            return response()->json([
+                'status' => false,
+                'message' => 'Validation errors',
+                'data' => $validator->errors()
+            ], 200);
         }
 
         // Step 2: Handle file upload for QR code (optional)
-       
+        // You can implement file upload logic here if needed
 
         // Step 3: Create the user
         $user = User::create([
@@ -129,7 +150,7 @@ class AuthController extends Controller
             'lastname' => $request->lastname,
             'mobilenumber' => $request->mobilenumber,
             'email' => $request->email,
-            'qr_code' =>  $request->qr_code,  // Store the file path
+            'qr_code' => $request->qr_code,  // Store the file path if provided
             'password' => Hash::make($request->password),  // Hash the password
             'expiredate' => $request->expirydate ? Carbon::parse($request->expirydate) : null,
             'status' => 'active',  // Default status is active
@@ -140,9 +161,11 @@ class AuthController extends Controller
 
         // Step 4: Return success response with user details
         return response()->json([
+            'status' => true,
             'message' => 'User successfully registered',
-            'user' => $user
-        ], 201);
+            'data' => $user
+        ], 200);
     }
+
 
 }

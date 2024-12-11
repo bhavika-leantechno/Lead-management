@@ -1,15 +1,19 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api;
 use App\Models\Plan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use App\Http\Controllers\Controller;
+
 use Exception;
 
 class PlanController extends Controller
 {
-    // Create a new plan
+    /**
+     * Create a new plan
+     */
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -18,9 +22,12 @@ class PlanController extends Controller
             'status' => 'required|in:active,inactive',
         ]);
 
-        // Return validation errors if any
         if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
+            return response()->json([
+                'status' => false,
+                'message' => 'Validation failed.',
+                'data' => $validator->errors(),
+            ], 200);
         }
 
         try {
@@ -31,37 +38,74 @@ class PlanController extends Controller
                 'status' => $request->status,
             ]);
 
-            return response()->json($plan, 201);
+            return response()->json([
+                'status' => true,
+                'message' => 'Plan created successfully.',
+                'data' => $plan,
+            ], 200);
         } catch (Exception $e) {
-            return response()->json(['error' => 'Failed to create plan.'], 500);
+            \Log::error('Error creating plan:', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'status' => false,
+                'message' => 'An error occurred while creating the plan.',
+                'data' => null,
+            ], 500);
         }
     }
 
-    // Get all plans
+    /**
+     * Get all plans
+     */
     public function index()
     {
         try {
             $plans = Plan::all();
-            return response()->json($plans);
+            return response()->json([
+                'status' => true,
+                'message' => 'Plans retrieved successfully.',
+                'data' => $plans,
+            ],200);
         } catch (Exception $e) {
-            return response()->json(['error' => 'Failed to retrieve plans.'], 500);
+            \Log::error('Error fetching plans:', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'status' => false,
+                'message' => 'An error occurred while fetching the plans.',
+                'data' => null,
+            ], 500);
         }
     }
 
-    // Show a single plan
+    /**
+     * Show a single plan
+     */
     public function show($id)
     {
         try {
             $plan = Plan::findOrFail($id);
-            return response()->json($plan);
+            return response()->json([
+                'status' => true,
+                'message' => 'Plan retrieved successfully.',
+                'data' => $plan,
+            ],200);
         } catch (ModelNotFoundException $e) {
-            return response()->json(['error' => 'Plan not found.'], 404);
+            return response()->json([
+                'status' => false,
+                'message' => 'Plan not found.',
+                'data' => null,
+            ], 200);
         } catch (Exception $e) {
-            return response()->json(['error' => 'Failed to retrieve plan.'], 500);
+            \Log::error('Error fetching plan details:', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'status' => false,
+                'message' => 'An error occurred while fetching the plan.',
+                'data' => null,
+            ], 500);
         }
     }
 
-    // Update a plan
+    /**
+     * Update a plan
+     */
     public function update(Request $request, $id)
     {
         $validator = Validator::make($request->all(), [
@@ -70,9 +114,12 @@ class PlanController extends Controller
             'status' => 'required|in:active,inactive',
         ]);
 
-        // Return validation errors if any
         if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
+            return response()->json([
+                'status' => false,
+                'message' => 'Validation failed.',
+                'data' => $validator->errors(),
+            ], 200);
         }
 
         try {
@@ -84,15 +131,30 @@ class PlanController extends Controller
                 'status' => $request->status,
             ]);
 
-            return response()->json($plan);
+            return response()->json([
+                'status' => true,
+                'message' => 'Plan updated successfully.',
+                'data' => $plan,
+            ]);
         } catch (ModelNotFoundException $e) {
-            return response()->json(['error' => 'Plan not found.'], 404);
+            return response()->json([
+                'status' => false,
+                'message' => 'Plan not found.',
+                'data' => null,
+            ], 200);
         } catch (Exception $e) {
-            return response()->json(['error' => 'Failed to update plan.'], 500);
+            \Log::error('Error updating plan:', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'status' => false,
+                'message' => 'An error occurred while updating the plan.',
+                'data' => null,
+            ], 500);
         }
     }
 
-    // Soft delete a plan
+    /**
+     * Soft delete a plan
+     */
     public function destroy($id)
     {
         try {
@@ -100,11 +162,24 @@ class PlanController extends Controller
             $plan->update(['deleted_by' => auth()->id()]);
             $plan->delete();
 
-            return response()->json(['message' => 'Plan deleted successfully']);
+            return response()->json([
+                'status' => true,
+                'message' => 'Plan deleted successfully.',
+                'data' => null,
+            ]);
         } catch (ModelNotFoundException $e) {
-            return response()->json(['error' => 'Plan not found.'], 404);
+            return response()->json([
+                'status' => false,
+                'message' => 'Plan not found.',
+                'data' => null,
+            ], 200);
         } catch (Exception $e) {
-            return response()->json(['error' => 'Failed to delete plan.'], 500);
+            \Log::error('Error deleting plan:', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'status' => false,
+                'message' => 'An error occurred while deleting the plan.',
+                'data' => null,
+            ], 500);
         }
     }
 }

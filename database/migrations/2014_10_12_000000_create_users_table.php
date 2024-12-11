@@ -31,6 +31,11 @@ return new class extends Migration
             $table->timestamp('deleted_at')->nullable();
             $table->tinyInteger('is_deleted')->default(0);
             $table->string('remember_token', 100)->nullable();
+            $table->string('profile_picture', 100)->nullable();
+            $table->tinyInteger('assigned_report')->default(0);
+            $table->tinyInteger('approve_freelancer')->default(0);
+            $table->tinyInteger('assigned_agent')->default(0);
+
             $table->timestamps(); // created_at and updated_at columns
             $table->integer('updated_by')->nullable();
             $table->integer('created_by')->nullable();

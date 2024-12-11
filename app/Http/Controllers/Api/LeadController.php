@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
@@ -11,9 +10,7 @@ use Illuminate\Support\Facades\Validator;
 
 class LeadController extends Controller
 {
-
-    
-      /**
+    /**
      * Handle lead creation.
      *
      * @param Request $request
@@ -32,21 +29,25 @@ class LeadController extends Controller
             'address' => 'nullable|string|max:500',
             'service_text' => 'nullable|string|max:1000', // Description
         ]);
-    
+
         // Add conditional rule for service_type
         $validator->sometimes('service_type', 'required|string|max:255', function ($input) {
             return $input->lead_type === 'Mobile services';
         });
-    
+
         // If validation fails
         if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
+            return response()->json([
+                'status' => false,
+                'message' => 'Validation failed.',
+                'data' => $validator->errors(),
+            ], 200);
         }
-    
+
         try {
             // Get the logged-in user's ID (created_by)
             $createdBy = $request->user()->id;
-    
+
             // Create the lead
             $lead = Lead::create([
                 'lead_type' => $request->lead_type,
@@ -59,22 +60,24 @@ class LeadController extends Controller
                 'service_text' => $request->service_text,
                 'created_by' => $createdBy,  // Store the ID of the logged-in user
             ]);
-    
+
             // Return success response
             return response()->json([
+                'status' => true,
                 'message' => 'Lead created successfully.',
-                'lead' => $lead,
-            ], 201);
-    
+                'data' => $lead,
+            ], 200);
+
         } catch (\Exception $e) {
             // Handle errors
             return response()->json([
+                'status' => false,
                 'message' => 'An error occurred while creating the lead.',
-                'error' => $e->getMessage(),
+                'data' => $e->getMessage(),
             ], 500);
         }
     }
-    
+
     public function levelOne(Request $request)
     {
         try {
@@ -86,12 +89,12 @@ class LeadController extends Controller
                 'email' => 'required|email|max:255|unique:leads,email', // Ensure the email is unique
                 'location' => 'nullable|string',
             ]);
-    
+
             // Generate a unique processing ID
             do {
                 $processingId = Str::random(8);
             } while (Lead::where('processing_id', $processingId)->exists()); // Check if processing ID already exists
-    
+
             // Create new lead at level 1 and store in database
             $lead = Lead::create([
                 'name' => $validated['name'],
@@ -106,28 +109,31 @@ class LeadController extends Controller
             flush();
             // Return response with lead data and next step
             return response()->json([
+                'status' => true,
                 'message' => 'Step 1 data saved, proceed to Level 2.',
-                'lead_id' => $lead->id,
-                'processing_id' => $processingId,
-                'step' => 2
+                'data' => [
+                    'lead_id' => $lead->id,
+                    'processing_id' => $processingId,
+                    'step' => 2
+                ],
             ]);
-    
+
         } catch (\Illuminate\Validation\ValidationException $e) {
             // Handle validation errors
             return response()->json([
+                'status' => false,
                 'message' => 'Validation failed.',
-                'errors' => $e->errors(),
-            ], 422); // Unprocessable Entity status
+                'data' => $e->errors(),
+            ], 200); // Unprocessable Entity status
         } catch (\Exception $e) {
             // Catch any other unexpected errors
             return response()->json([
+                'status' => false,
                 'message' => 'An error occurred during the lead creation process.',
-                'error' => $e->getMessage(),
+                'data' => $e->getMessage(),
             ], 500); // Internal Server Error status
         }
     }
-    
-
 
     /**
      * Handle Level 2: Additional Details.
@@ -148,13 +154,15 @@ class LeadController extends Controller
 
         // Return response with lead data and next step
         return response()->json([
+            'status' => true,
             'message' => 'Step 2 data saved, proceed to Level 3.',
-            'lead_id' => $lead->id,
-            'step' => 3
+            'data' => [
+                'lead_id' => $lead->id,
+                'step' => 3
+            ],
         ]);
     }
 
-   
     /**
      * Handle Level 3: File Upload and Finalization.
      */
@@ -182,29 +190,35 @@ class LeadController extends Controller
 
             // Return success response
             return response()->json([
+                'status' => true,
                 'message' => 'Lead successfully updated to Level 3.',
-                'lead_id' => $lead->id
+                'data' => [
+                    'lead_id' => $lead->id,
+                ],
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             // Handle validation errors
             return response()->json([
+                'status' => false,
                 'message' => 'Validation failed.',
-                'errors' => $e->errors(),
+                'data' => $e->errors(),
             ], 422); // Unprocessable Entity
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             // Handle case where lead is not found
             return response()->json([
+                'status' => false,
                 'message' => 'Lead not found.',
+                'data' => null,
             ], 404); // Not Found
         } catch (\Exception $e) {
             // Handle any other unexpected errors
             return response()->json([
+                'status' => false,
                 'message' => 'An error occurred during Level 3 processing.',
-                'error' => $e->getMessage(),
+                'data' => $e->getMessage(),
             ], 500); // Internal Server Error
         }
     }
-
 
     /**
      * Get all leads (Admin access).
@@ -215,7 +229,7 @@ class LeadController extends Controller
             // Retrieve the logged-in user's ID
             $userId = $request->user()->id;
             $userType = $request->user()->user_type;
-    
+
             // Check if the user is a freelancer
             if ($userType === 'freelancer') {
                 // Fetch only leads created by the logged-in freelancer
@@ -224,24 +238,27 @@ class LeadController extends Controller
                 // For non-freelancers (admin, agent, etc.), fetch all leads
                 $leads = Lead::all();
             }
-    
+
             // Get total count of leads
             $totalCount = $leads->count();
-    
+
             return response()->json([
+                'status' => true,
                 'message' => 'Leads fetched successfully.',
-                'total_count' => $totalCount,
-                'data' => $leads
+                'data' => [
+                    'total_count' => $totalCount,
+                    'leads' => $leads
+                ],
             ]);
         } catch (\Exception $e) {
             // Handle any errors
             return response()->json([
+                'status' => false,
                 'message' => 'An error occurred while fetching leads.',
-                'error' => $e->getMessage(),
+                'data' => $e->getMessage(),
             ], 500);
         }
     }
-    
 
     /**
      * Get leads by level (e.g., Level 1, Level 2, or Level 3).
@@ -262,22 +279,24 @@ class LeadController extends Controller
 
             // Return response with leads data
             return response()->json([
+                'status' => true,
                 'message' => "Leads for $leadtype fetched successfully.",
                 'data' => $leads
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             // Handle validation exception
             return response()->json([
+                'status' => false,
                 'message' => 'Validation failed.',
-                'errors' => $e->errors(),
-            ], 422); // Unprocessable Entity
+                'data' => $e->errors(),
+            ], 200); // Unprocessable Entity
         } catch (\Exception $e) {
             // Catch any other exception
             return response()->json([
+                'status' => false,
                 'message' => 'An error occurred while fetching the leads.',
-                'error' => $e->getMessage(),
+                'data' => $e->getMessage(),
             ], 500); // Internal Server Error
         }
     }
-    
 }

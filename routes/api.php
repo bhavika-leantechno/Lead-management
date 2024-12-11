@@ -9,7 +9,8 @@ use App\Http\Controllers\OtpVerificationController;
 use App\Http\Controllers\ResetPasswordController;
 use App\Http\Controllers\Api\LeadController;
 use App\Http\Controllers\Api\AdminController;
-use App\Http\Controllers\PlanController;
+use App\Http\Controllers\Api\PlanController;
+use App\Http\Controllers\Api\ImageController;
 
 
 /*
@@ -27,6 +28,8 @@ use App\Http\Controllers\PlanController;
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
+
+Route::post('upload-multiple-images', [ImageController::class, 'uploadMultipleImages']);
 
 // User Authentication Routes
 Route::post('/register', [UserController::class, 'create']);
@@ -86,7 +89,7 @@ Route::middleware('auth:api')->prefix('admin')->group(function () {
 // Agent Management API Routes
 Route::middleware('auth:api')->prefix('admin/agents')->group(function () {
     // Create a new agent
-    Route::post('/create', [AdminController::class, 'createAgent']);
+    Route::post('/create-agent', [AdminController::class, 'createAgent']);
 
     // List all agents
     Route::get('/', [AdminController::class, 'getAgents']);
@@ -104,22 +107,17 @@ Route::middleware('auth:api')->prefix('admin/agents')->group(function () {
 
 Route::middleware('auth:api')->prefix('admin/plans')->group(function () {
     // Create a new plans
-    Route::post('/create', [AdminController::class, 'createPlans']);
+    Route::post('/create', [PlanController::class, 'createPlans']);
 
     // List all plans
-    Route::get('/', [AdminController::class, 'getPlans']);
+    Route::get('/', [PlanController::class, 'getPlans']);
 
     // View plans details by ID
-    Route::get('/{id}', [AdminController::class, 'viewPlans']);
+    Route::get('/{id}', [PlanController::class, 'viewPlans']);
 
     // Edit plans details by ID
-    Route::put('/{id}', [AdminController::class, 'editPlans']);
+    Route::put('/{id}', [PlanController::class, 'editPlans']);
 
     // Delete plans by ID
-    Route::delete('/{id}', [AdminController::class, 'deletePlans']);
+    Route::delete('/{id}', [PlanController::class, 'deletePlans']);
 });
-
-
-
-
-
