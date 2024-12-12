@@ -37,6 +37,12 @@ return new class extends Migration
             $table->unsignedBigInteger('deleted_by')->nullable();
             $table->unsignedBigInteger('user_id')->nullable();
             $table->integer('agent_id')->nullable();
+            $table->string('stage_movement')->nullable(); // Stage movement as a string
+            $table->string('disposition')->nullable(); // Disposition as a string
+            $table->text('remarks')->nullable(); // Remarks as text for more content
+            $table->string('attachment')->nullable(); // Attachment path as a string
+            $table->timestamp('next_follow_up_date')->nullable(); // Next follow-up date as a timestamp
+            $table->integer('hours')->nullable(); // Hours as an integer
             $table->tinyInteger('status')->default(1);
             $table->timestamp('deleted_at')->nullable();
             $table->timestamps(); // created_at and updated_at // Created_at and Updated_at fields

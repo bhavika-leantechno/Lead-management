@@ -12,15 +12,15 @@ class Authenticate extends Middleware
      * @param  \Illuminate\Http\Request  $request
      * @return string|null
      */
-  
+
     protected function redirectTo($request)
     {
         if (! $request->expectsJson()) {
-            return response()->json(['message' => 'Unauthenticated'], 401);
+                return response()->json(['message' => 'Unauthenticated or Token Expired'], 401);
         }
 
-    // For web requests, redirect to the login page
-    return route('login');  // or wherever your login page is located
+            // For web requests, redirect to the login page
+    return redirect()->guest(route('login'));
     }
 
 }

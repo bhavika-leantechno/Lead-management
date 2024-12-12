@@ -34,7 +34,15 @@ class Lead extends Model
         'service_type',
         'lead_type',
         'phone_number',
-        'agent_id'
+        'agent_id',
+        'stage_movement',
+        'disposition',
+        'remarks',
+        'attachment',
+        'next_follow_up_date',
+        'hours',
+        'change_status',
+        'plan_id'
     ];
 
     // The attributes that should be hidden for arrays (e.g., passwords, tokens)

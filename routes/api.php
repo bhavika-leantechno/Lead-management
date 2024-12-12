@@ -55,14 +55,23 @@ Route::middleware('auth:api')->prefix('leads')->group(function () {
     // Step 3: File uploads and finalization (Level 3)
     Route::post('/level-3', [LeadController::class, 'levelThree']);
 
-    // Get all leads (Admin access)
-    Route::get('/', [LeadController::class, 'getLeads']);
-
     // Get leads by level
     Route::post('/level', [LeadController::class, 'getLeadsByLevel']);
 
     // Create a new lead
     Route::post('/create', [LeadController::class, 'createLead']);
+
+    // Get all leads (Admin access)
+    Route::get('/', [LeadController::class, 'getLeads']);
+
+    Route::get('/{id}', [LeadController::class, 'getLeadsById']);
+
+    Route::put('/{id}/visit-update', [LeadController::class, 'updateVisit']);
+
+    Route::put('/{id}/follow-up-update', [LeadController::class, 'updateFollowUp']);
+
+    Route::put('/{id}/change-status', [LeadController::class, 'updateChangeStatus']);
+
 });
 
 // Freelancer Management API Routes
@@ -84,6 +93,9 @@ Route::middleware('auth:api')->prefix('admin')->group(function () {
 
     // Update lead status
     Route::put('/leads/{id}/update-status', [AdminController::class, 'updateLeadStatus']);
+
+    Route::put('/leads/activity-log', [AdminController::class, 'getActivityLog']);
+
 });
 
 // Agent Management API Routes

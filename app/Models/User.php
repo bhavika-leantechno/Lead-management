@@ -35,7 +35,12 @@ class User extends Authenticatable implements JWTSubject
         'profile_picture',
         'assigned_report',
         'approve_freelancer',
-        'assigned_agent'
+        'assigned_agent',
+        'name',
+        'address',
+        'created_by',
+        'deleted_by',
+        'updated_by'
     ];
     protected $dates = [
         'expiredate',
@@ -69,7 +74,7 @@ class User extends Authenticatable implements JWTSubject
     {
         return $this->getKey(); // Typically, the primary key of the user
     }
-    
+
     /**
      * Return a key-value array containing any custom claims to be added to the JWT.
      *

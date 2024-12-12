@@ -200,7 +200,7 @@ class AdminController extends Controller
         }
     }
 
-    public function updateLeadStatus($id, Request $request)
+    public function updateLeadStatus(Request $request)
     {
         try {
             if ($request->user()->user_type !== 'admin') {
@@ -212,11 +212,12 @@ class AdminController extends Controller
             }
 
             $validated = $request->validate([
+                'lead_id' => 'required',
                 'agent_id' => 'required|exists:users,id',
                 'change_status' => 'required|string',
             ]);
 
-            $lead = Lead::find($id);
+            $lead = Lead::find($request->lead_id);
 
             if (!$lead) {
                 return response()->json([
@@ -285,14 +286,15 @@ class AdminController extends Controller
             $agent = User::create([
                 'name' => $request->full_name,
                 'email' => $request->email,
-                'phone_number' => $request->phone_number,
-                'password' => Hash::make('agent@123'),
+                'mobilenumber' => $request->phone_number,
+                'password' => Hash::make($request->password),
                 'address' => $request->address,
                 'user_type' => 'agent',
                 'profile_picture' => $profile_picture_path,
                 'assigned_report' => $request->assigned_report ?? false,
                 'approve_freelancer' => $request->approve_freelancer ?? false,
                 'assigned_agent' => $request->assigned_agent ?? false,
+                'created_by' => $request->user()->id,
             ]);
 
             return response()->json([
@@ -349,17 +351,19 @@ class AdminController extends Controller
         }
     }
 
-    public function editAgent(Request $request, $id)
+    public function editAgent(Request $request)
     {
         $validated = Validator::make($request->all(), [
             'full_name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $id,
+            'email' => 'required|email|unique:users,email,' . $request->agent_id,
             'phone_number' => 'required|string|max:20',
             'address' => 'nullable|string|max:500',
             'profile_picture' => 'nullable|image|mimes:jpg,jpeg,png',
             'assigned_report' => 'nullable|boolean',
             'approve_freelancer' => 'nullable|boolean',
             'assigned_agent' => 'nullable|boolean',
+            'agent_id' => 'required',
+
         ]);
 
         if ($validated->fails()) {
@@ -371,7 +375,7 @@ class AdminController extends Controller
         }
 
         try {
-            $agent = User::findOrFail($id);
+            $agent = User::findOrFail($request->agent_id);
 
             if ($request->hasFile('profile_picture')) {
                 $profile_picture_path = $request->file('profile_picture')->store('profile_pictures', 'public');
@@ -380,11 +384,13 @@ class AdminController extends Controller
 
             $agent->name = $request->full_name;
             $agent->email = $request->email;
-            $agent->phone_number = $request->phone_number;
+            $agent->mobilenumber = $request->phone_number;
             $agent->address = $request->address;
             $agent->assigned_report = $request->assigned_report ?? false;
             $agent->approve_freelancer = $request->approve_freelancer ?? false;
             $agent->assigned_agent = $request->assigned_agent ?? false;
+            $agent->updated_by = $request->user()->id;
+
 
             $agent->save();
 

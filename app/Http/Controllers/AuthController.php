@@ -62,12 +62,7 @@ class AuthController extends Controller
             'data' => [
                 'access_token' => $token,
                 'token_type' => 'Bearer',
-                'user' => [
-                    'id' => $user->id,
-                    'email' => $user->email,
-                    'name' => $user->name,
-                    'user_type' => $user->user_type,
-                ],
+                'user' => $user,
             ],
         ]);
     } catch (\Illuminate\Validation\ValidationException $e) {
@@ -88,27 +83,21 @@ class AuthController extends Controller
 
 
 
-   public function logout(Request $request)
+ public function logout(Request $request)
 {
     try {
-        // Revoke the user's current token
-        $request->user()->tokens->each(function ($token) {
-            $token->delete();
-        });
-
-        // Optionally, invalidate the cookie (if you're using Sanctum)
-        $cookie = cookie('XSRF-TOKEN', '', -1);
-        $cookie = cookie('laravel_session', '', -1);
+        // Invalidate the token
+        JWTAuth::invalidate(JWTAuth::getToken());
 
         return response()->json([
             'status' => true,
             'message' => 'Successfully logged out.',
-            'data' => null
-        ])->withCookies([$cookie]);
-    } catch (\Exception $e) {
+            'data' => null,
+        ]);
+    } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
         return response()->json([
             'status' => false,
-            'message' => 'An error occurred during logout.',
+            'message' => 'Failed to logout, please try again.',
             'data' => $e->getMessage(),
         ], 500);
     }
@@ -163,8 +152,12 @@ class AuthController extends Controller
         return response()->json([
             'status' => true,
             'message' => 'User successfully registered',
-            'data' => $user
-        ], 200);
+            'data' => [
+                'access_token' => null,
+                'token_type' => 'Bearer',
+                'user' => $user,
+            ],
+        ]);
     }
 
 

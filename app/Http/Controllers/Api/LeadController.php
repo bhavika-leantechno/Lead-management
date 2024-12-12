@@ -220,6 +220,49 @@ class LeadController extends Controller
         }
     }
 
+    public function getLeadsById(Request $request, $id)
+    {
+        try {
+            // Retrieve the logged-in user's ID and user type
+            $user = $request->user();
+            $userId = $user->id;
+            $userType = $user->user_type;
+
+            // Check if the lead exists
+            $lead = Lead::find($id);
+
+            if (!$lead) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Lead not found.',
+                ], 200);
+            }
+
+            // Check access for freelancers
+            if ($userType === 'freelancer' && $lead->created_by !== $userId) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'You are not authorized to access this lead.',
+                ], 200);
+            }
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Lead details fetched successfully.',
+                'data' => $lead,
+            ], 200);
+
+        } catch (\Exception $e) {
+            // Handle any errors
+            return response()->json([
+                'status' => false,
+                'message' => 'An error occurred while fetching the lead.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+
     /**
      * Get all leads (Admin access).
      */
@@ -299,4 +342,214 @@ class LeadController extends Controller
             ], 500); // Internal Server Error
         }
     }
+
+    public function getActivityLog()
+    {
+        try {
+            $logs = Lead::select('activity_type', 'details', 'created_at')
+                        ->orderBy('created_at', 'desc')
+                        ->get();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Activity logs fetched successfully.',
+                'data' => $logs,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'An error occurred while fetching the activity logs.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function updateVisit(Request $request)
+    {
+            // Define the validation rules
+            $validator = Validator::make($request->all(), [
+                'stage_movement' => 'required|string',
+                'disposition' => 'required|string|in:Answered,Unanswered,Callback',
+                'remarks' => 'nullable|string',
+                'attachment' => 'nullable|string', // Validate if an attachment is provided
+                'lead_id' => 'required', // Validate if an attachment is provided
+            ]);
+
+            // Check if validation fails
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Validation failed.',
+                    'errors' => $validator->errors()
+                ], 200);
+            }
+
+        try {
+            // Find the lead by ID
+            $lead = Lead::findOrFail($request->lead_id);
+
+            // Update the lead with the visit data
+            $lead->update([
+                'stage_movement' => $request->stage_movement,
+                'disposition' => $request->disposition,
+                'remarks' => $request->remarks ?? $lead->remarks,
+                'updated_by' => Auth::id(),
+            ]);
+
+            // Handle file attachment if present
+            if ($request->hasFile('attachment')) {
+                $file = $request->file('attachment');
+                $filePath = $file->store('attachments', 'public');
+                $lead->update(['attachment' => $filePath]);
+            }
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Visit updated successfully.',
+                'data' => $lead,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'An error occurred while updating the visit.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+
+    public function updateFollowUp(Request $request)
+    {
+        // dd("tset");
+         // Define validation rules
+            $validator = Validator::make($request->all(), [
+                'next_follow_up_date' => 'required|date',
+                'hours' => 'nullable|numeric|min:0',
+                'remarks' => 'nullable|string',
+                'lead_id' => 'required',
+            ]);
+
+            // Check if validation fails
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Validation failed.',
+                    'errors' => $validator->errors(),
+                ], 200); // HTTP 422 Unprocessable Entity
+            }
+
+        try {
+            // Find the lead by ID
+            $lead = Lead::findOrFail($request->lead_id);
+
+            // Update the lead with the follow-up data
+            $lead->update([
+                'next_follow_up_date' => $request->next_follow_up_date,
+                'hours' => $request->hours ?? $lead->hours,
+                'remarks' => $request->remarks ?? $lead->remarks,
+                'updated_by' => Auth::id(),
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Follow-up updated successfully.',
+                'data' => $lead,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'An error occurred while updating the follow-up.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+
+    public function updateChangeStatus(Request $request)
+    {
+        // dd("tset");
+         // Define validation rules
+            $validator = Validator::make($request->all(), [
+                'change_status' => 'required|string',
+                'lead_id'=> 'required'
+
+            ]);
+
+            // Check if validation fails
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Validation failed.',
+                    'errors' => $validator->errors(),
+                ], 200); // HTTP 422 Unprocessable Entity
+            }
+
+        try {
+            // Find the lead by ID
+            $lead = Lead::findOrFail($request->lead_id);
+
+            // Update the lead with the follow-up data
+            $lead->update([
+                'change_status' => $request->change_status,
+                'updated_by' => Auth::id(),
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Change Status updated successfully.',
+                'data' => $lead,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'An error occurred while updating the follow-up.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function changeStatusAgent(Request $request)
+    {
+
+
+        $validator = Validator::make($request->all(), [
+                'change_status' => 'required|string',
+                'plan_id' => 'required|exists:plans,id',
+                'lead_id' => 'required'
+            ]);
+
+            // Check if validation fails
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Validation failed.',
+                    'errors' => $validator->errors(),
+                ], 200); // HTTP 422 Unprocessable Entity
+            }
+
+        try {
+            // Find the lead by ID
+            $lead = Lead::findOrFail($request->lead_id);
+
+            // Update the lead with the follow-up data
+            $lead->update([
+                'change_status' => $request->change_status,
+                'plan_id' => $request->plan_id,
+                'updated_by' => Auth::id(),
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Change Status updated successfully.',
+                'data' => $lead,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'An error occurred while updating the status.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
 }
